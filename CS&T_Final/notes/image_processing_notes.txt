@@ -1,0 +1,19 @@
+Much like the audio_processing class
+
+First we load the image
+    outputs to a PIL image object (this is python imaging library, and contains stuff ioke pixel data, metadata(size, color mode, format, etc.) and also methods for working with the image)
+
+Then we convert the image to bits
+    we first convert to grayscale, extract heigth and width, and convert each pixel (0-255) to 8-bit binary
+    it then packages everything in a numpy array that looks like:
+        [height, width, actual pixel bits] (first 165 bits are height metadata, second 16 bits are width metadata, then all remaining bits are the actual pixel values)
+
+Then we have a method to convert the bits back into an image   
+    this basically just reverses the process
+        we get the height and width from the first 32 bits,
+        then we read the remaining bits (8 per pixel)
+        then we reshape into a 2d grayscale PIL image object
+            Everything is row-by-row, left-to-right, so once we know the shape (really just the width) we can put the pixels back where they belong in a 2d matrix
+
+We then have a method to save the image back into the data folder
+    

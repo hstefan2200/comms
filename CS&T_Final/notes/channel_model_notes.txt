@@ -1,0 +1,26 @@
+add_noise():
+    this adds awgn to the input signal
+
+    signal: this is the input signal (a numpy array)
+    snr_db: signal to noise ratio in db 
+
+
+
+    returns a signal with the added noise
+    also returns the noise (isolated from the signal)
+
+get_noise_power():
+    this calculates the noise power for a given signal and snr, without acutally generating noise
+
+    signal: input signal
+    snr_db: desired snr in db
+
+    returns calculated noise power
+
+calculate_snr():
+    this calculates the actual snr of a signal with noise (verification tool)
+
+    signal: input signal (original)
+    noise: isolated noise component
+
+    returns snr_db (actual snr in db)
