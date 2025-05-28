@@ -119,7 +119,7 @@ class AudioProcessor:
         
         return reconstructed_audio
     
-    def save_adio_file(self, audio_data, filepath, sample_rate=8000):
+    def save_audio_file(self, audio_data, filepath, sample_rate=8000):
         #convert numpy array of audio samples back into wav file and save
         audio_int16 = (audio_data * 32767).astype(np.int16)
         try:
