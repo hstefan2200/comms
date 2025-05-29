@@ -1,3 +1,0 @@
-add image and audio processor
-
-work on transmitter (integrate the modulator and channel with the processed data)

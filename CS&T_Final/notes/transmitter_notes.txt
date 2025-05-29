@@ -1,0 +1,16 @@
+This was honestly pretty straightforward once I got my head around the fact that we are simply generating an audio file.
+
+We are basically making use of the existing classes and their methods to load data (image and audio)
+then we prepare that by converting to bits
+then we modulate the signal (the carrier is generated within that method)
+then we add awgn noise
+and we're basically good to go
+
+Added some plots to be able to analyze the signal a bits
+
+tested audio and image "transmission" both isolated and combined. The outputted files led me to realize that the samples per symbol were far too low
+    I ended up doubling it, which is fine for now
+        (the combined transmission output was like 50min, so it is now 26)
+        I'm going to wait until I can test the receiver and demodulate/reconstruction before fiddling with the input parameters too much
+
+        

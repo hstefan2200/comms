@@ -193,6 +193,7 @@ def test_transmitter():
     try:
         image_bits, image_metadata = transmitter.prepare_data_packet(image_path="data/matlab_logo.png")
         audio_signal, clean_signal, noise, actual_snr = transmitter.transmit_data(image_bits, snr_db=10, output_audio_file="data/transmitted_image.wav")
+        # transmitter.plot_transmission_analysis(clean_signal, audio_signal, image_bits)
     except Exception as e:
         print(f"Image test failed: {e}")
     
@@ -204,6 +205,7 @@ def test_transmitter():
     try:
         audio_bits, audio_metadata = transmitter.prepare_data_packet(audio_path="data/audio_recording.wav")
         audio_signal2, clean_signal2, noise2, actual_snr2 = transmitter.transmit_data(audio_bits, snr_db=10, output_audio_file="data/transmitted_audio.wav")
+        # transmitter.plot_transmission_analysis(clean_signal2, audio_signal2, audio_bits)
     except Exception as e:
         print(f"Audio test failed: {e}")
         
@@ -217,10 +219,6 @@ def test_transmitter():
     except Exception as e:
         print(f"Combined test failed: {e}")
         
-        try:
-            transmitter.plot_transmission_analysis(clean_signal, audio_signal, image_bits)
-        except:
-            print("Could not generate any plots")
             
 if __name__ == "__main__":
     test_transmitter()
