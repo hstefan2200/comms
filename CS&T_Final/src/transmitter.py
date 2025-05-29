@@ -1,8 +1,8 @@
 import numpy as np
-from modulation import BPSKModulator
-from channel_model import AWGNChannel
-from audio_processing import AudioProcessor
-from image_processing import ImageProcessor
+from src.modulation import BPSKModulator
+from src.channel_model import AWGNChannel
+from src.audio_processing import AudioProcessor
+from src.image_processing import ImageProcessor
 import matplotlib.pyplot as plt
 
 class Transmitter:
@@ -185,7 +185,7 @@ def test_transmitter():
     print("-" * 50)
     print("Transmission Test")
     
-    transmitter = Transmitter(carrier_freq=1000, sample_rate=8000, quantization_bits=16)
+    transmitter = Transmitter(carrier_freq=1000, sample_rate=8000, quantization_bits=8)
     
     #Image test
     print("Testing image transmission")

@@ -1,8 +1,8 @@
 import enum
 import numpy as np
-from src.modulation import BPSKDemodulator
-from src.audio_processing import AudioProcessor
-from src.image_processing import ImageProcessor
+from modulation import BPSKDemodulator
+from audio_processing import AudioProcessor
+from image_processing import ImageProcessor
 import matplotlib.pyplot as plt
 from scipy.io import wavfile
 
@@ -31,6 +31,9 @@ class Receiver:
                 audio_data = audio_data[:, 0]
             
             print(f"loaded {len(audio_data)} samples at {sample_rate}")
+            # DEBUG: Print signal statistics
+            print(f"DEBUG: Signal range: [{np.min(audio_data):.6f}, {np.max(audio_data):.6f}]")
+            print(f"DEBUG: Signal RMS: {np.sqrt(np.mean(audio_data**2)):.6f}")
             
             return audio_data, sample_rate
 
@@ -48,10 +51,22 @@ class Receiver:
         else:
             normalized_signal = received_signal
             
+        # DEBUG: Check demodulator parameters
+        print(f"DEBUG: Demodulator carrier_freq: {self.demodulator.fc} Hz")
+        print(f"DEBUG: Demodulator sample_rate: {self.demodulator.fs} Hz")
+        print(f"DEBUG: Demodulator symbol_rate: {self.demodulator.symbol_rate} Hz")
+        print(f"DEBUG: Samples per symbol: {self.demodulator.samples_per_symbol}")
+        
         #using BPSKDemodulator
         recovered_bits = self.demodulator.demodulate(normalized_signal)
         
         print(f"Recovered {len(recovered_bits)} bits from signal")
+        
+        # DEBUG: Check bit statistics
+        ones_count = np.sum(recovered_bits == 1)
+        zeros_count = np.sum(recovered_bits == 0)
+        print(f"DEBUG: Recovered bits - Ones: {ones_count}, Zeros: {zeros_count}")
+        print(f"DEBUG: First 50 bits: {recovered_bits[:50]}")
         
         return recovered_bits
     
@@ -60,6 +75,9 @@ class Receiver:
         if len(bits) < 32:
             print("WARNING: Less than 32 bits, header is first 32 bits")
             return None, None
+        
+        # DEBUG: Show header bits
+        print(f"DEBUG: Header bits (first 32): {bits[:32]}")
         
         #Extract image length if it exists (first 16 bits)
         image_length_bits = bits[:16]
@@ -78,6 +96,8 @@ class Receiver:
         }
         
         print(f"Packet metadata - Image: {image_length} bits, Audio: {audio_length} bits")
+        print(f"DEBUG: Total bits available after header: {len(bits) - 32}")
+        print(f"DEBUG: Total bits expected: {metadata['total_expected']}")
         
         return metadata, bits[32:]
     
@@ -86,7 +106,11 @@ class Receiver:
         audio_bits = None
         
         current_position = 0
-                
+        
+        print(f"DEBUG: Available data bits: {len(data_bits)}")
+        print(f"DEBUG: Expected image bits: {metadata['image_length']}")
+        print(f"DEBUG: Expected audio bits: {metadata['audio_length']}")
+        
         # Extract image bits if present
         if metadata['image_length'] > 0:
             end_position = current_position + metadata['image_length']
@@ -94,8 +118,13 @@ class Receiver:
                 image_bits = data_bits[current_position:end_position]
                 current_position = end_position
                 print(f"Extracted {len(image_bits)} image bits")
+                # DEBUG: Check if image bits look reasonable
+                ones_in_image = np.sum(image_bits == 1)
+                zeros_in_image = np.sum(image_bits == 0)
+                print(f"DEBUG: Image bits - Ones: {ones_in_image}, Zeros: {zeros_in_image}")
             else:
                 print("Warning: Not enough bits for complete image data")
+                print(f"DEBUG: Need {end_position} bits but only have {len(data_bits)}")
                 
         # Extract audio bits if present
         if metadata['audio_length'] > 0:
@@ -103,8 +132,13 @@ class Receiver:
             if end_position <= len(data_bits):
                 audio_bits = data_bits[current_position:end_position]
                 print(f"Extracted {len(audio_bits)} audio bits")
+                # DEBUG: Check if audio bits look reasonable
+                ones_in_audio = np.sum(audio_bits == 1)
+                zeros_in_audio = np.sum(audio_bits == 0)
+                print(f"DEBUG: Audio bits - Ones: {ones_in_audio}, Zeros: {zeros_in_audio}")
             else:
                 print("Warning: Not enough bits for complete audio data")
+                print(f"DEBUG: Need {end_position} bits but only have {len(data_bits)}")
         
         return image_bits, audio_bits
     
@@ -114,18 +148,30 @@ class Receiver:
             return None
         print("Reconstructing image")
         try:
+            # DEBUG: Check image metadata extraction
+            if len(image_bits) >= 32:
+                height_bits = image_bits[:16]
+                width_bits = image_bits[16:32]
+                height = sum(bit * (2**(15-i)) for i, bit in enumerate(height_bits))
+                width = sum(bit * (2**(15-i)) for i, bit in enumerate(width_bits))
+                print(f"DEBUG: Extracted image dimensions: {height} x {width}")
+                expected_pixel_bits = height * width * 8
+                actual_pixel_bits = len(image_bits) - 32
+                print(f"DEBUG: Expected pixel bits: {expected_pixel_bits}, Actual: {actual_pixel_bits}")
+            
             reconstructed_image = self.image_processor.bits_to_image(image_bits)
             
             if output_path:
                 success = self.image_processor.save_image(reconstructed_image, output_path)
                 if success:
-                    print(f"Image save to {output_path}")
+                    print(f"Image saved to {output_path}")
                     return reconstructed_image
                 else:
                     print("Failed to save image")
                     return None
-            else:  
+            else:
                 return reconstructed_image
+                
         except Exception as e:
             print(f"Error reconstructing image: {e}")
             import traceback
@@ -149,6 +195,11 @@ class Receiver:
                     'downsample_factor': 1,
                     'original_range': [-1.0, 1.0]
                 }
+                
+                print(f"DEBUG: Audio reconstruction metadata:")
+                print(f"  Bits per sample: {bits_per_sample}")
+                print(f"  Number of samples: {num_samples}")
+                print(f"  Total audio bits: {len(audio_bits)}")
             else:
                 metadata = original_metadata
             
@@ -156,6 +207,7 @@ class Receiver:
             
             if output_path:
                 sample_rate = self.sample_rate // metadata.get('downsample_factor', 1)
+                print(f"DEBUG: Saving audio with sample rate: {sample_rate}")
                 try:
                     self.audio_processor.save_audio_file(reconstructed_audio, output_path, sample_rate)
                     print(f"Audio saved to {output_path}")
@@ -163,7 +215,7 @@ class Receiver:
                 except Exception as e:
                     print(f"Failed to save audio: {e}")
                     return None
-            else:    
+            else:
                 return reconstructed_audio
         
         except Exception as e:
@@ -177,7 +229,7 @@ class Receiver:
             min_len = min(len(original_bits), len(received_bits))
             original_bits = original_bits[:min_len]
             received_bits = received_bits[:min_len]
-            print(f"WARNGIN: bit length mismatch, truncating to {min_len} bits")
+            print(f"WARNING: bit length mismatch, truncating to {min_len} bits")
             
         errors = np.sum(original_bits != received_bits)
         ber = errors / len(original_bits)
@@ -185,12 +237,23 @@ class Receiver:
         print(f"BER: {ber:.6f} ({errors}/{len(original_bits)})")
         
         return ber, errors
-            
+    
+    def debug_modulation_parameters(self):
+        """Print current modulation parameters for debugging"""
+        print("DEBUG: Current Receiver Parameters:")
+        print(f"  Carrier frequency: {self.carrier_freq} Hz")
+        print(f"  Sample rate: {self.sample_rate} Hz")
+        print(f"  Quantization bits: {self.audio_processor.quantization_bits}")
+        print(f"  Demodulator symbol rate: {self.demodulator.symbol_rate} Hz")
+        print(f"  Samples per symbol: {self.demodulator.samples_per_symbol}")
             
     def receive_and_process(self, audio_file_path, original_bits=None, output_dir="data/received/"):
         #putting everything together here
         print("-"*50)
         print("Starting data reception")
+        
+        # DEBUG: Print receiver parameters
+        self.debug_modulation_parameters()
         
         #load received signal
         received_signal, sample_rate = self.load_received_signal(audio_file_path)
@@ -238,16 +301,16 @@ class Receiver:
             audio_filename = f"{output_dir}received_audio.wav"
             reconstructed_audio = self.reconstruct_audio(audio_bits, output_path=audio_filename)
             if reconstructed_audio is not None:
-                print("audio reconstruction successful")
+                print("Audio reconstruction successful")
             else:
-                print("audio reconstruction failed")
+                print("Audio reconstruction failed")
         
         #find BER
         if original_bits is not None:
             ber, errors = self.calculate_bit_error_rate(original_bits, recovered_bits)
             print(f"BER: {ber:.6f}")
             print(f"Success rate: {(1-ber)*100:.4f}%")
-            
+        
         return {
             'data_types': {
                 'has_image': has_image,
